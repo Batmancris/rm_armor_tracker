@@ -131,30 +131,31 @@ ____
 ![fps](./doc/fps.png)
 ____
 ## Topics  
-/armor_detector/armors
-/armor_detector/binary_img
-/armor_detector/debug_armors
-/armor_detector/debug_lights
-/armor_detector/heartbeat
-/armor_detector/marker
-/armor_detector/number_img
-/armor_detector/result_img
-/camera_driver/heartbeat
-/camera_info
-/clicked_point
-/goal_pose
-/image_raw
-/initialpose
-/parameter_events
-/rosout
-/tf
-/tf_static
+/armor_detector/armors  
+/armor_detector/binary_img  
+/armor_detector/debug_armors  
+/armor_detector/debug_lights  
+/armor_detector/heartbeat  
+/armor_detector/marker  
+/armor_detector/number_img  
+/armor_detector/result_img  
+/camera_driver/heartbeat  
+/camera_info  
+/clicked_point  
+/goal_pose  
+/image_raw  
+/initialpose  
+/parameter_events  
+/rosout  
+/tf  
+/tf_static  
  
 ____
 ## To Do List
-- [x] Camera Node
-- [x] Detector Node
-- [ ] Tracker Node
+- [x] Camera Node 25.1.8
+- [x] Detector Node 25.2.6
+- [ ] Tracker Node 25.2.10
+- [ ] Unit Testing 25.2.15
 ____ 
 ## License  
 The tracker_node is prietary. Packages like rm_bringup、rm_camera_driver are under __MIT__ license.  
