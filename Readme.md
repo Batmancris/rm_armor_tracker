@@ -110,6 +110,34 @@ Update the software package index
   sudo apt install  libspdlog-dev
   ```
 
+- __absl__
+
+>Abseil is an open-source collection of C++ library code designed to augment the C++ standard library. 
+
+  ```shell
+   git clone https://github.com/abseil/abseil-cpp.git
+  ```
+
+  ```shell
+  cd abseil-cpp
+  ```
+  
+  ```shell
+   mkdir build && cd build
+  ```
+
+  ```shell
+  cmake ..
+  ```
+
+  ```shell
+  make -j
+  ```  
+
+  ```shell
+  sudo make install  
+  
+
 - __Qt__
 
 >Qt is a cross-platform application development framework for desktop, embedded and mobile.
