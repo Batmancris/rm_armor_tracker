@@ -49,7 +49,7 @@ DahengCameraNode::DahengCameraNode(const rclcpp::NodeOptions &options)
 
   camera_name_ = this->declare_parameter("camera_name", "daheng");
   camera_info_url_ =
-    this->declare_parameter("camera_info_url", "package://rm_bringup/config/camera_info.yaml");
+    this->declare_parameter("camera_info_url", "package://rm_camera_driver/config/camera_info.yaml");
   frame_id_ = this->declare_parameter("camera_frame_id", "camera_optical_frame");
   pixel_format_ = this->declare_parameter("pixel_format", "rgb8");
   resolution_width_ = this->declare_parameter("resolution_width", 1280);
