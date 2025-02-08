@@ -7,12 +7,12 @@ ____
 
 ## Introduce
 
-- __Recommended environment__
+- **Recommended environment**
 
 Based on the chenjun open-source rm_vision framework,  
 The hardware of this project depends on **RDK_X5** and **Daheng industrial camera**, and the software depends on **Ubuntu2204** and **ROS2humble**
 
-- __Changelog__
+- **Changelog**
 
 2025-1-8：Upload Basic functions  
 <pre>
@@ -64,8 +64,7 @@ ____
   git clone https://github.com/tianbot/rm_armor_tracker.git
   ```
 
-[rm_armor_tracker-dev
-](https://github.com/tianbot/rm_armor_tracker/tree/dev)
+[rm_armor_tracker-dev](https://github.com/tianbot/rm_armor_tracker/tree/dev)
 ____
 
 ### Dependencies
@@ -76,9 +75,11 @@ Update the software package index
   sudo apt-get update
   ```  
 
+#### DaHeng Camera SDK
+
 #### Common component
 
-- __camera_info_manager__  
+- **camera_info_manager**  
 
 >It provides a C++ class used by many camera drivers to manage the camera calibration data required by the ROS image pipeline.  
 
@@ -86,7 +87,7 @@ Update the software package index
   sudo apt-get install ros-humble-camera_info_manager
   ```  
 
-- __image_transport__  
+- **image_transport**  
 
 >image_transport should always be used to subscribe to and publish images. It provides transparent.  
 
@@ -94,7 +95,7 @@ Update the software package index
   sudo apt-get install ros-humble-image_transport
   ```
 
-- __fmt__
+- **fmt**
 
 >an open-source formatting library providing a fast and safe alternative to C stdio and C++ iostreams.
 
@@ -102,7 +103,7 @@ Update the software package index
   sudo apt-get install libfmt-dev
   ```
 
-- __spdlog__
+- **spdlog**
 
 >Fast C++ logging library
 
@@ -110,9 +111,9 @@ Update the software package index
   sudo apt install  libspdlog-dev
   ```
 
-- __absl__
+- **absl**
 
->Abseil is an open-source collection of C++ library code designed to augment the C++ standard library. 
+>Abseil is an open-source collection of C++ library code designed to augment the C++ standard library.  
 
   ```shell
    git clone https://github.com/abseil/abseil-cpp.git
@@ -136,9 +137,9 @@ Update the software package index
 
   ```shell
   sudo make install  
-  
+  ```
 
-- __Qt__
+- **Qt**
 
 >Qt is a cross-platform application development framework for desktop, embedded and mobile.
 
@@ -148,7 +149,7 @@ Update the software package index
 
 #### Math tools
 
-- __eigen__
+- **eigen**
 
 >Eigen is a C++ template library for linear algebra: matrices, vectors, numerical solvers, and related algorithms.
 
@@ -156,7 +157,7 @@ Update the software package index
   sudo apt install libeigen3-dev
   ```
 
-- __suitesparse__
+- **suitesparse**
 
 > SuiteSparse is a set of sparse-matrix-related packages
 
@@ -164,7 +165,7 @@ Update the software package index
   sudo apt install   libsuitesparse-dev
   ```
 
-- __Ceres__  
+- **Ceres**  
 
 >Ceres Solver 1 is an open source C++ library for modeling and solving large, complicated optimization problems.  
 
@@ -198,7 +199,7 @@ Update the software package index
   sudo make install  
   ```  
 
-- __Sophus__  
+- **Sophus**  
 
 >Sophus is a C++ implementation of Lie groups commonly used for 2d and 3d geometric problems
 
@@ -232,7 +233,7 @@ Update the software package index
   sudo make install  
   ```
 
-- __G2O__
+- **G2O**
 
 >g2o is an open-source C++ framework for optimizing graph-based nonlinear error functions.
 
@@ -260,14 +261,6 @@ Update the software package index
   sudo make install  
   ```  
 
-<!-- ____ -->
-<!-- ### Cmake  
-add External library in CMakeList.txt  
-<pre>
-find_package(ament_cmake_auto REQUIRED)
-find_package(camera_info_manager REQUIRED)
-find_package(image_transport REQUIRED)
-</pre> -->
 ____
 
 ## Compilation  
@@ -312,7 +305,7 @@ ____
 ros2 run rm_camera_driver rm_camera_node
 ```  
 
-__Topic__: /image_raw  
+**Topic**: /image_raw  
 
 ### TF Static Publisher
 
@@ -325,14 +318,16 @@ ros2 run tf2_ros static_transform_publisher --frame-id odom --child-frame-id cam
 ```shell
 ros2 run armor_detector armor_detector_node
 ```  
-__Topic__: /armor_detector/result_img  
 
-###
+**Topic**: /armor_detector/result_img  
 
 ### Visualization  
 
 - launch rviz2
-`rviz2`  
+
+  ```shell
+  rviz2
+  ```  
 
 - Add by topic
 `image_raw`  
@@ -346,19 +341,19 @@ ____
 
 ## result  
 
-##### origin img
+### origin img
 
 ![origin](./doc/origin.png)
 
-##### binary img
+### binary img
 
 ![binary](./doc/binary.png)
 
-##### result img
+### result img
 
 ![result](./doc/result.png)
 
-##### fps:203(i7 10800H)
+### fps:203(i7 10800H)
 
 ![fps](./doc/fps.png)
 ____
@@ -397,7 +392,7 @@ ____
 
 ## License  
 
-The tracker_node is prietary. Packages like rm_bringup、rm_camera_driver are under __MIT__ license.  
+The tracker_node is prietary. Packages like rm_bringup、rm_camera_driver are under **MIT** license.  
 Galaxy SDK is under commercial license.  
 
 ## Contact Us
