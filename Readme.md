@@ -104,13 +104,13 @@ Update the software package index
 
 >Ceres Solver 1 is an open source C++ library for modeling and solving large, complicated optimization problems.  
 
-`git clone --recurse-submodules https://github.com/ceres-solver/ceres-solver.git`
+`git clone --recurse-submodules https://github.com/ceres-solver/ceres-solver.git`  
 `cd ceres-solver`  
 `mkdir build`  
 `cd build`  
-`cmake ..`
-`make -j`
-`sudo make install`
+`cmake ..`  
+`make -j`  
+`sudo make install`  
 
 - __Sophus__  
 
@@ -127,12 +127,12 @@ Update the software package index
 
 >g2o is an open-source C++ framework for optimizing graph-based nonlinear error functions.
 
-`git clone https://github.com/RainerKuemmerle/g2o`
-`cd g2o`
-`mkdir build && cd build`
-`cmake ..`
-`make -j`
-`sudo make install`
+`git clone https://github.com/RainerKuemmerle/g2o`  
+`cd g2o`  
+`mkdir build && cd build`  
+`cmake ..`  
+`make -j`  
+`sudo make install`  
 
 <!-- ____ -->
 <!-- ### Cmake  
@@ -181,15 +181,15 @@ __Topic__: /armor_detector/result_img
 ### Visualization  
 
 - launch rviz2
-`rviz2`
+`rviz2`  
 
 - Add by topic
 `image_raw`  
 `binary img`  
-`result img`
+`result img`  
 
 - QoS seting
-`Reliable >> Best Effort`
+`Reliable >> Best Effort`  
 
 ____
 
