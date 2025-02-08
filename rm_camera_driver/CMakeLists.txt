@@ -50,6 +50,10 @@ else()
   message(FATAL_ERROR "Unsupport host system architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}!")
 endif()
 
+install(DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 target_link_libraries(${PROJECT_NAME}
   libgxiapi.so
   ${OpenCV_LIBS}
