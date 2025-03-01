@@ -502,7 +502,7 @@ Change"192.168.0.215"to the IP of your RDK
 
   - websocket
   ![websocket](./doc/blue.png)
-  - terminal
+  - tmux
   ![tmux](./doc/45hz.png)
   Terminal：fps:72(RDK_X5)
   
