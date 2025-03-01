@@ -20,6 +20,12 @@
 #include "sensor_msgs/msg/image.hpp"
 
 #include "include/parser.h"
+#include <cerrno>       // 用于errno
+#include <fcntl.h>      // open
+#include <termios.h>    // POSIX终端控制定义
+#include <unistd.h>     // UNIX标准函数定义
+#include <cstring>      // memset
+#include <cstdio>       // 用于snprintf
 
 // 使用hobotcv resize nv12格式图片，固定图片宽高比
 int ResizeNV12Img(const char* in_img_data,
@@ -88,6 +94,9 @@ class DNNNodeSample : public hobot::dnn_node::DnnNode {
   // 算法输入图片数据的宽和高
   int model_input_width_ = -1;
   int model_input_height_ = -1;
+
+  int serial_fd = -1;
+  bool InitSerialPort(const std::string& port, int baudrate);
   // std::shared_ptr<hobot::dnn_node::DNNTensor> dnn_tensor = nullptr;
 
   // 图片消息订阅者
@@ -101,6 +110,45 @@ class DNNNodeSample : public hobot::dnn_node::DnnNode {
   void FeedImg(const hbm_img_msgs::msg::HbmMsg1080P::ConstSharedPtr msg);
 };
 
+bool DNNNodeSample::InitSerialPort(const std::string& port, int baudrate) {
+  serial_fd = open(port.c_str(), O_RDWR | O_NOCTTY);
+  if (serial_fd < 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("dnn_node_sample"), "Open serial failed!");
+    return false;
+  }
+
+  struct termios tty;
+  memset(&tty, 0, sizeof tty);
+  if (tcgetattr(serial_fd, &tty) != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("dnn_node_sample"), "Get termios failed!");
+    return false;
+  }
+
+  // 波特率设置（回环测试示例为921600）
+  speed_t speed = B921600;
+  cfsetospeed(&tty, speed);
+  cfsetispeed(&tty, speed);
+
+  tty.c_cflag &= ~PARENB;   // 无奇偶校验
+  tty.c_cflag &= ~CSTOPB;   // 1位停止位
+  tty.c_cflag |= CS8;       // 8数据位
+  tty.c_cflag &= ~CRTSCTS;  // 无硬件流控
+  tty.c_cflag |= CREAD;     // 启用接收
+
+  tty.c_lflag &= ~ICANON;   // 非规范模式
+  tty.c_lflag &= ~ECHO;     // 禁用回显
+  tty.c_lflag &= ~ISIG;     // 禁用信号
+
+  tty.c_iflag &= ~(IXON | IXOFF | IXANY); // 禁用软件流控
+  tty.c_oflag &= ~OPOST;    // 原始输出模式
+
+  tty.c_cc[VMIN] = 0;   // 非阻塞模式
+  tty.c_cc[VTIME] = 1;  // 100ms超时
+
+  tcsetattr(serial_fd, TCSANOW, &tty);
+  return true;
+}
+
 DNNNodeSample::DNNNodeSample(const std::string& node_name,
                              const rclcpp::NodeOptions& options)
     : hobot::dnn_node::DnnNode(node_name, options) {
@@ -110,6 +158,10 @@ DNNNodeSample::DNNNodeSample(const std::string& node_name,
     RCLCPP_ERROR(rclcpp::get_logger("dnn_node_sample"), "Node init fail!");
     rclcpp::shutdown();
   }
+
+  if (!InitSerialPort("/dev/ttyS1", 921600)) {
+      RCLCPP_ERROR(rclcpp::get_logger("dnn_node_sample"), "Serial init fail!");
+    }
 
   // 创建消息订阅者，从摄像头节点订阅图像消息
   ros_img_subscription_ =
@@ -253,6 +305,10 @@ int DNNNodeSample::PostProcess(
 
   // 3.3 使用解析后的数据填充到ROS Msg
   for (auto& rect : results) {
+    float x_predict = 0.0;
+    float y_predict = 0.0;
+    float x_deta = 0.0;
+    float y_deta = 0.0;
     if (!rect) continue;
     if (rect->xmin < 0) rect->xmin = 0;
     if (rect->ymin < 0) rect->ymin = 0;
@@ -261,6 +317,58 @@ int DNNNodeSample::PostProcess(
     }
     if (rect->ymax >= model_input_height_) {
       rect->ymax = model_input_height_ - 1;
+    }
+    x_predict = 0.5 * (rect->xmax + rect->xmin);
+    y_predict = 0.5 * (rect->ymax + rect->ymin);
+    x_deta = x_predict - 325;
+    y_deta = 250 - y_predict;
+    RCLCPP_WARN(rclcpp::get_logger("dnn_node_sample"),  // <--- 新增此行
+        "BBox: [x_predict=%.2f, y_predict=%.2f, x_deta=%.2f, y_deta=%.2f]",  // <--- 新增此行
+        x_predict, y_predict, x_deta, y_deta);
+
+    // 串口发送数据
+    // char tx_buf[64];
+    // int len = snprintf(tx_buf, sizeof(tx_buf), "%.2f,%.2f\n", x_predict, y_predict);
+    // if (write(serial_fd, tx_buf, len) < 0) {
+    //   RCLCPP_ERROR(rclcpp::get_logger("dnn_node_sample"), "Serial write failed!");
+    // }
+
+    char tx_buf[64];
+    int len = snprintf(tx_buf, sizeof(tx_buf), 
+           "x_predict: %.2f   y_predict:%.2f\n",  // <-- 修改格式
+           x_predict, 
+           y_predict);
+    
+    // 打印发送信息
+    RCLCPP_WARN(rclcpp::get_logger("dnn_node_sample"),
+        "Send: %s", 
+        tx_buf);
+
+    // 发送数据
+    if (write(serial_fd, tx_buf, len) < 0) {
+      RCLCPP_ERROR(rclcpp::get_logger("dnn_node_sample"),
+              "Serial write failed! Error: %s (errno=%d)", 
+              strerror(errno), 
+              errno);
+    }
+
+    // 接收回环数据
+    char rx_buf[64] = {0};
+    int n = read(serial_fd, rx_buf, sizeof(rx_buf));
+    if (n > 0) {
+      
+      // 移除接收数据末尾的换行符（确保输出格式整洁）
+      if (rx_buf[n-1] == '\n') rx_buf[n-1] = 0;
+
+      // 打印接收信息
+      RCLCPP_WARN(rclcpp::get_logger("dnn_node_sample"),
+          "Recv: %s", 
+          rx_buf);
+    } else if (n < 0) {
+      RCLCPP_ERROR(rclcpp::get_logger("dnn_node_sample"),
+              "Serial read failed! Error: %s (errno=%d)", 
+              strerror(errno), 
+              errno);
     }
 
     ai_msgs::msg::Roi roi;
@@ -325,13 +433,16 @@ int DNNNodeSample::PostProcess(
       auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                           tp_now - tp_start)
                           .count();
-      RCLCPP_WARN(rclcpp::get_logger("dnn_node_sample"),
-                  "input fps: %.2f, out fps: %.2f, infer time ms: %d, "
-                  "post process time ms: %d",
-                  node_output->rt_stat->input_fps,
-                  node_output->rt_stat->output_fps,
-                  node_output->rt_stat->infer_time_ms,
-                  interval);
+
+
+
+      // RCLCPP_WARN(rclcpp::get_logger("dnn_node_sample"),
+      //             "input fps: %.2f, out fps: %.2f, infer time ms: %d, "
+      //             "post process time ms: %d",
+      //             node_output->rt_stat->input_fps,
+      //             node_output->rt_stat->output_fps,
+      //             node_output->rt_stat->infer_time_ms,
+      //             interval);
     }
   }
   // hbSysFreeMem(&(dnn_tensor->sysMem[0]));
@@ -340,6 +451,10 @@ int DNNNodeSample::PostProcess(
 
   return 0;
 }
+
+// DNNNodeSample::~DNNNodeSample() {
+//   if (serial_fd != -1) close(serial_fd);
+// }
 
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
