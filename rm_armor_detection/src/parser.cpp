@@ -23,30 +23,34 @@ using hobot::dnn_node::DNNTensor;
 namespace hobot {
 namespace dnn_node {
 namespace dnn_node_sample {
-// 算法输出解析参数
+ 
+// YOLOv8 模型量化后处理配置结构体
 struct PTQYolo8Config {
-  std::vector<int> strides;
-  std::vector<std::vector<std::pair<double, double>>> anchors_table;
-  int class_num;
-  std::vector<std::string> class_names;
-  std::vector<std::vector<float>> dequantize_scale;
+  std::vector<int> strides;                         // 特征图下采样步长
+  std::vector<std::vector<std::pair<double, double>>> anchors_table; // 锚点配置
+  int class_num;                                    // 类别总数
+  std::vector<std::string> class_names;             // 类别名称映射表
+  std::vector<std::vector<float>> dequantize_scale; // 反量化系数（当前未使用）
 };
 
-float score_threshold_ = 0.4;
-float conf_thres_raw = -log(1 / score_threshold_ - 1);
-float nms_threshold_ = 0.5;
-int nms_top_k_ = 5000;
-int kpt_num_ = 4;
-int kpt_encode_ = 3;
-int class_num_ = 18;
-int reg_ = 16;
+// 后处理参数配置
+float score_threshold_ = 0.4;           // 分数阈值，低于此值的检测框被丢弃
+float conf_thres_raw = -log(1 / score_threshold_ - 1); // 原始分数阈值（Sigmoid反函数）
+float nms_threshold_ = 0.5;             // 非极大值抑制阈值
+int nms_top_k_ = 5000;                  // NMS处理前保留的最大候选框数
+int kpt_num_ = 4;                       // 关键点数量
+int kpt_encode_ = 3;                    // 每个关键点的编码维度（x,y,score）
+int class_num_ = 18;                    // 类别数量（与class_names对应）
+int reg_ = 16;                          // 边界框回归参数维度
 
+// YOLOv8 模型配置实例化
 PTQYolo8Config yolo8_config_ = {
     {8, 16, 32},
     {{{10, 13}, {16, 30}, {33, 23}},
      {{30, 61}, {62, 45}, {59, 119}},
      {{116, 90}, {156, 198}, {373, 326}}},
-    class_num_,
+    class_num_,   // 类别数
+    // 类别名称映射（蓝/红方哨兵、前哨、基地等）
     {"blue_sentry_0", "blue_1", "blue_2", "blue_3", "blue_4","blue_5","blue_outpost_6", "blue_7", "blue_base_8",
     "red_sentry_0", "red_1", "red_2", "red_3", "red_4","red_5","red_outpost_6", "red_7", "red_base_8"}};
 
@@ -77,35 +81,46 @@ void ParseTensor(std::shared_ptr<hobot::dnn_node::DnnNodeOutput> node_output,
                  std::vector<int> &order,
                  std::vector<cv::Rect2d> &bboxes,
                  std::vector<float> &scores) {
+  // 刷新内存缓存，确保读取最新数据（针对异构计算场景）
   hbSysFlushMem(&(node_output->output_tensors[order[0]]->sysMem[0]), HB_SYS_MEM_CACHE_INVALIDATE);
   hbSysFlushMem(&(node_output->output_tensors[order[1]]->sysMem[0]), HB_SYS_MEM_CACHE_INVALIDATE);
   hbSysFlushMem(&(node_output->output_tensors[order[2]]->sysMem[0]), HB_SYS_MEM_CACHE_INVALIDATE);
 
 
-  //TODO
-  int w_ = 640 / order[3];
-  int h_ = 640 / order[3];
-  float scale_ = float(order[3]);
+  // 特征图参数计算（TODO: 640应为模型输入尺寸，可能需要参数化）
+  int w_ = 640 / order[3];    // 特征图宽度
+  int h_ = 640 / order[3];    // 特征图高度
+  float scale_ = float(order[3]);   // 缩放因子（用于还原到原图坐标）
 
   // 7.1.3 将BPU推理完的内存地址转换为对应类型的指针
   // 7.1.3 Convert the memory address of BPU inference to a pointer of the corresponding type
+  // 边界框量化值
   auto *bbox_raw = reinterpret_cast<int32_t *>(node_output->output_tensors[order[0]]->sysMem[0].virAddr);
+  // 类别分数
   auto *cls_raw = reinterpret_cast<float *>(node_output->output_tensors[order[1]]->sysMem[0].virAddr);
+  // 关键点数据
   auto *kpts_raw = reinterpret_cast<float *>(node_output->output_tensors[order[2]]->sysMem[0].virAddr);
+  // 反量化系数
   auto *bbox_scale = reinterpret_cast<float *>(node_output->output_tensors[order[0]]->properties.scale.scaleData);
+  
+  // 遍历特征图每个网格
   for (int h = 0; h < h_; h++)
   {
       for (int w = 0; w < w_; w++)
       {
+          // 获取当前网格的各类数据指针
           float *cur_cls_raw = cls_raw;
           int32_t *cur_bbox_raw = bbox_raw;
           float *cur_kpts_raw = kpts_raw;
-          cls_raw += class_num_;
-          bbox_raw += reg_ * 4;
-          kpts_raw += kpt_num_ * kpt_encode_; 
+
+          // 指针偏移到下一个网格
+          cls_raw += class_num_;              // 类别分数按类别数步进
+          bbox_raw += reg_ * 4;               // 边界框数据按回归参数步进（4个坐标）
+          kpts_raw += kpt_num_ * kpt_encode_; // 关键点数据按编码维度步进
 
           // 7.1.5 找到分数的最大值索引, 如果最大值小于阈值，则舍去
           // 7.1.5 Find the index of the maximum score value and discard if the maximum value is less than the threshold
+          // 找到最大类别分数
           int cls_id = 0;
           for (int i = 1; i < class_num_; i++)
           {
@@ -117,6 +132,7 @@ void ParseTensor(std::shared_ptr<hobot::dnn_node::DnnNodeOutput> node_output,
 
           // 7.1.6 不合格则直接跳过, 避免无用的反量化, DFL和dist2bbox计算
           // 7.1.6 If not qualified, skip to avoid unnecessary dequantization, DFL and dist2bbox calculation
+          // 分数不达标则跳过后续处理
           if (cur_cls_raw[cls_id] < conf_thres_raw)
           {
               continue;
@@ -129,31 +145,33 @@ void ParseTensor(std::shared_ptr<hobot::dnn_node::DnnNodeOutput> node_output,
           // 7.1.8 对bbox_raw信息进行反量化, DFL计算
           // 7.1.8 Dequantize bbox_raw information, DFL calculation
           float ltrb[4], sum, dfl;
-          for (int i = 0; i < 4; i++)
+          for (int i = 0; i < 4; i++)   // 遍历4个坐标（l,t,r,b）
           {
               ltrb[i] = 0.;
               sum = 0.;
+              // 对每个坐标的reg_个分布值进行softmax
               for (int j = 0; j < reg_; j++)
               {
                   dfl = std::exp(float(cur_bbox_raw[reg_ * i + j]) * bbox_scale[reg_ * i + j]);
-                  ltrb[i] += dfl * j;
-                  sum += dfl;
-              }
-              ltrb[i] /= sum;
+                  ltrb[i] += dfl * j;   // 计算期望值
+                  sum += dfl;           // 归一化分母
+              } 
+              ltrb[i] /= sum;           // 得到最终坐标偏移量
           }
 
           // 7.1.9 剔除不合格的框   if(x1 >= x2 || y1 >=y2) continue;
           // 7.1.9 Remove unqualified boxes
+          // 剔除无效边界框（宽/高非正）
           if (ltrb[2] + ltrb[0] <= 0 || ltrb[3] + ltrb[1] <= 0)
           {
               continue;
           }
 
           // 7.1.10 dist 2 bbox (ltrb 2 xyxy)
-          float x1 = (w + 0.5 - ltrb[0]) * scale_;
-          float y1 = (h + 0.5 - ltrb[1]) * scale_;
-          float x2 = (w + 0.5 + ltrb[2]) * scale_;
-          float y2 = (h + 0.5 + ltrb[3]) * scale_;
+          float x1 = (w + 0.5 - ltrb[0]) * scale_;  // 中心点x - 左偏移
+          float y1 = (h + 0.5 - ltrb[1]) * scale_;  // 中心点y - 上偏移
+          float x2 = (w + 0.5 + ltrb[2]) * scale_;  // 中心点x + 右偏移
+          float y2 = (h + 0.5 + ltrb[3]) * scale_;  // 中心点y + 下偏移
 
           // 7.1.11 kpts的处理
           // 7.1.11 Process kpts
@@ -161,12 +179,14 @@ void ParseTensor(std::shared_ptr<hobot::dnn_node::DnnNodeOutput> node_output,
           // std::vector<cv::Point2f> kpt_xy(KPT_NUM);
           // std::vector<float> kpt_score(KPT_NUM);
           for (int j = 0; j < kpt_num_; j++)
-          {
+          {   
+              // 关键点坐标解码（相对网格中心偏移量）
               float x = (cur_kpts_raw[kpt_encode_ * j] * 2.0 + w) * scale_;
               float y = (cur_kpts_raw[kpt_encode_ * j + 1] * 2.0 + h) * scale_;
 
               // kpt_xy[j] = cv::Point2f(x, y);
               // kpt_score[j] = cur_kpts_raw[kpt_encode_ * j + 2];
+              // 存储坐标和置信度
               kpts[3 * j] = x;
               kpts[3 * j + 1] = y;
               kpts[3 * j + 2] = cur_kpts_raw[kpt_encode_ * j + 2];
@@ -179,13 +199,16 @@ void ParseTensor(std::shared_ptr<hobot::dnn_node::DnnNodeOutput> node_output,
           scores.push_back(score);
           // kpts_xy.push_back(kpt_xy);
           // kpts_score.push_back(kpt_score);
+          // 构造完整检测结果
           YoloV8Result yolov8_result(cls_id, x1, y1, x2, y2, score, kpts, yolo8_config_.class_names[cls_id]);
           results.push_back(yolov8_result);
       }
   }
 }
 
-
+/* 主解析函数：整合多尺度检测结果并执行NMS
+   node_output: 模型输出数据
+   results:     最终输出结果 */
 int32_t Parse(
     const std::shared_ptr<hobot::dnn_node::DnnNodeOutput> &node_output,
     std::vector<std::shared_ptr<YoloV8Result>> &results) {
