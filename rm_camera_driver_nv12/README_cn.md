@@ -1,4 +1,4 @@
-# rm_camera_driver
+# rm_camera_driver_nv12
 
 FYT视觉24赛季工业相机驱动模块
 
@@ -22,5 +22,5 @@ FYT视觉24赛季工业相机驱动模块
 
 ### 启动指令
 ```
-ros2 run rm_camera_driver rm_camera_driver_node
+ros2 run rm_camera_driver_nv12 rm_camera_driver_nv12_node
 ```

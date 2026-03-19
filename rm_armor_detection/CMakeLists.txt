@@ -17,6 +17,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(ai_msgs REQUIRED)
@@ -93,9 +94,19 @@ add_executable(${PROJECT_NAME}
   src/parser.cpp
 )
 
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+  # sample.cpp pulls in large ROS2/TROS template headers; lowering its compile
+  # optimization level keeps the build practical on the RDK X5.
+  set_source_files_properties(
+    src/sample.cpp
+    PROPERTIES COMPILE_OPTIONS "-O0;-g0"
+  )
+endif()
+
 ament_target_dependencies(
   ${PROJECT_NAME}
   rclcpp
+  ament_index_cpp
   dnn_node
   sensor_msgs
   ai_msgs

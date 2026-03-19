@@ -1,4 +1,4 @@
-# rm_camera_driver
+# rm_camera_driver_nv12
 
 ## fyt::DahengCameraNode
 
@@ -20,5 +20,5 @@ DaHeng Camera Driver Node
 
 ### Run command
 ```
-ros2 run rm_camera_driver rm_camera_driver_node
+ros2 run rm_camera_driver_nv12 rm_camera_driver_nv12_node
 ```

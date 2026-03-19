@@ -94,11 +94,11 @@ def generate_launch_description():
     )
     
     shared_mem_node = IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(
-                        get_package_share_directory('hobot_shm'),
-                        'launch/hobot_shm.launch.py'))
-            )
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('hobot_shm'),
+                'launch/hobot_shm.launch.py'))
+    )
     # 算法pkg
     rm_armor_detection = Node(
         package='rm_armor_detection',

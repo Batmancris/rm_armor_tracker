@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(rm_camera_driver)
+project(rm_camera_driver_nv12)
 
 ## Use C++17
 set(CMAKE_CXX_STANDARD 17)
@@ -26,6 +26,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/daheng_camera.cpp
   src/recorder.cpp
   src/video_player.cpp
+  src/usb_camera.cpp
 )
 
 set(HOBOTCV_LIB_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/lib)
@@ -87,6 +88,11 @@ rclcpp_components_register_node(${PROJECT_NAME}
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN fyt::camera_driver::VideoPlayerNode
   EXECUTABLE video_player_node
+)
+
+rclcpp_components_register_node(${PROJECT_NAME}
+  PLUGIN fyt::camera_driver::UsbCameraNode
+  EXECUTABLE usb_camera_node
 )
 
 if(BUILD_TESTING)
